@@ -1,0 +1,14 @@
+dowhy>=0.11
+econml>=0.15
+mapie>=0.9
+gpytorch>=1.11
+lightgbm>=4.0
+pandas>=2.0
+numpy>=1.26
+matplotlib>=3.8
+statsmodels>=0.14
+scikit-learn>=1.4
+jupyter>=1.0
+pytest>=8.0
+pre-commit>=3.0
+requests>=2.31
