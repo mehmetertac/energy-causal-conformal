@@ -7,7 +7,7 @@
 ### Key commit
 
 ```
-Day 1: causal mental model, DiD toy, repo scaffold, LCL data loader
+49ea1ea Day 1: causal mental model, DiD toy, repo scaffold, LCL data loader
 ```
 
 ---
