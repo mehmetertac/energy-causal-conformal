@@ -7,7 +7,7 @@
 ### Key commit
 
 ```
-(pending) Day 2: synthetic control counterfactual, SC notebook, heterogeneous simulator
+1b89e35 Day 2: synthetic control counterfactual, SC notebook, heterogeneous simulator
 ```
 
 ---
