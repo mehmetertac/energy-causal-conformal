@@ -1,6 +1,6 @@
 # Causal mental model for energy interventions
 
-This note maps core causal-inference ideas to utility and retail-energy questions. The Day 1 DiD toy in [`notebooks/00_did_toy_warmup.ipynb`](../notebooks/00_did_toy_warmup.ipynb) makes each concept concrete.
+This note maps core causal-inference ideas to utility and retail-energy questions. The Day 1 DiD toy in [`notebooks/00_did_toy_warmup.ipynb`](../notebooks/00_did_toy_warmup.ipynb) and Day 2 synthetic control in [`notebooks/01_synthetic_control.ipynb`](../notebooks/01_synthetic_control.ipynb) make each concept concrete.
 
 ---
 
@@ -23,7 +23,38 @@ The counterfactual is the untreated path we cannot directly observe for treated 
 
 **Energy example:** What would Austin residential load have looked like in July 2023 without the EV pilot incentive?
 
-Synthetic control (later this week) builds a weighted combination of control regions to approximate that path.
+Synthetic control builds a weighted combination of control regions to approximate that path. See [`notebooks/01_synthetic_control.ipynb`](../notebooks/01_synthetic_control.ipynb).
+
+---
+
+## Synthetic control
+
+When you have **one treated unit** (a feeder, city, or aggregated pilot group) and many untreated donors, synthetic control (SC) constructs a counterfactual as a **convex combination of donors**:
+
+`Y_synthetic,t = Σ_j w_j · Y_donor_j,t` with `w_j ≥ 0` and `Σ w_j = 1`
+
+Weights are fit on the **pre-intervention** window so the synthetic path tracks the treated unit closely before the tariff. After rollout, the same weights define **Y(0)** — what treated load would have been without the policy.
+
+**Energy example:** A Pecan Street pilot enrols 5 high-usage Austin homes in a peak-shaving tariff. Donors are 30 similar untreated homes. SC finds weights (e.g. 0.4×Home_A + 0.35×Home_B + …) that match the pilot group's pre-tariff evening peak. The post-tariff gap between actual and synthetic peak load is the effect estimate.
+
+### Why SC beats naive before/after for a single treated unit
+
+Naive before/after compares the treated unit to **itself** across time. Any shared shock (cold snap, bill increase, EV adoption) moves the treated series and is mistaken for policy impact.
+
+SC subtracts a donor combination that experienced the **same common shocks** but did not receive the tariff. If donors and treated tracked in the pre-period, the synthetic path carries forward the confounder; only the policy-specific divergence remains.
+
+DiD needs two large groups with parallel trends. SC is the right tool when treatment applies to **one aggregate unit** and you need a bespoke counterfactual, not a simple control mean.
+
+### Placebo tests
+
+Placebos ask: "Could a fake treatment produce a gap this large?"
+
+| Test | Idea | Pass criterion |
+|---|---|---|
+| **In-space** | Pretend each donor was treated; refit SC and measure post gaps | Real treated gap should be extreme vs placebo distribution |
+| **In-time** | Pick a fake pre-period date as "treatment" | No significant gap should appear before the true rollout |
+
+Placebos do not replace uncertainty intervals, but they sanity-check whether the estimated effect is distinguishable from noise.
 
 ---
 

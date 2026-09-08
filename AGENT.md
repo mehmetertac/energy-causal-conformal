@@ -10,12 +10,12 @@ Guidance for agents working in **energy-causal-conformal**. Read this file first
 |---|---|
 | [README.md](README.md) | Project goal, setup, two-notebook framing, tariff narrative |
 | [handover.md](handover.md) | Current status, repo layout, module API, week roadmap |
-| [docs/causal_mental_model.md](docs/causal_mental_model.md) | Potential outcomes, DiD assumptions, energy examples |
+| [docs/causal_mental_model.md](docs/causal_mental_model.md) | Potential outcomes, DiD assumptions, synthetic control, energy examples |
 | [data/README.md](data/README.md) | Pecan Street intent, LCL substitute, download commands |
 | [pytest.ini](pytest.ini) | Test discovery (`tests/`, `pythonpath = .`) |
 | [requirements.txt](requirements.txt) | Dependencies (DoWhy, EconML, MAPIE, GPyTorch, LightGBM) |
 | [notebooks/](notebooks/) | Exploratory walkthroughs |
-| [src/causal/](src/causal/) | DiD toy simulator and estimator |
+| [src/causal/](src/causal/) | DiD + synthetic control simulators and estimators |
 | [src/data/](src/data/) | LCL loader + Pecan Street stub |
 | [tests/](tests/) | Unit tests (synthetic data; no network in CI) |
 
@@ -55,7 +55,7 @@ Headline themes for this repo: **causal effects with honest uncertainty**, and *
 - **Always create at least minimal unit tests**, even for small changes.
 - Add **integration** tests when wiring multiple modules (e.g. loader → causal estimator → notebook export).
 - Add **functional** tests when the project supports them (CLI smoke tests, end-to-end with tiny fixtures).
-- Existing pattern: [tests/test_did.py](tests/test_did.py) uses simulated load so CI does not depend on smart-meter downloads.
+- Existing pattern: [tests/test_did.py](tests/test_did.py) and [tests/test_synth.py](tests/test_synth.py) use simulated load so CI does not depend on smart-meter downloads.
 - New causal or conformal logic should get numeric/assertion checks, not only "runs without error."
 
 ### 4. Run tests before commit or push

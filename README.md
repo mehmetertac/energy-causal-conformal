@@ -10,10 +10,12 @@ Utilities constantly ask causal questions (pilots, tariffs, curtailment counterf
 
 | Notebook | Question | Method |
 |---|---|---|
-| **1** (later) | Did the tariff reduce peak residential load? | Synthetic control on smart-meter data |
+| **1** | Did the tariff reduce peak residential load? | Synthetic control on smart-meter data |
 | **2** (later) | Are forecast intervals trustworthy in production? | MAPIE conformal intervals on a LightGBM load forecast + long rolling backtest |
 
-**Day 1 (now):** causal mental model + DiD toy that recovers a **known injected treatment effect** before touching real meters. See [`notebooks/00_did_toy_warmup.ipynb`](notebooks/00_did_toy_warmup.ipynb).
+**Day 1:** causal mental model + DiD toy that recovers a **known injected treatment effect**. See [`notebooks/00_did_toy_warmup.ipynb`](notebooks/00_did_toy_warmup.ipynb).
+
+**Day 2:** synthetic control counterfactual — fit donor weights on the pre-period, plot treated vs synthetic, recover a **known 15% peak-load reduction**. See [`notebooks/01_synthetic_control.ipynb`](notebooks/01_synthetic_control.ipynb). Uses simulated Pecan-shaped data until Dataport is available.
 
 Concept primer: [`docs/causal_mental_model.md`](docs/causal_mental_model.md)
 
@@ -29,7 +31,7 @@ A causal **average treatment effect (ATT)** on load is not just a kWh number —
 | **Wholesale energy savings** | `ΔkWh_peak × price_EUR_per_MWh / 1000` |
 | **Customer bill delta** | `ΔkWh × tariff_rate` (watch fixed vs volumetric components) |
 
-Day 1 uses **simulated** peak-hour ATT = **−0.4 kW** per treated home. With 50 treated homes that is ~**−0.02 MW** of peak demand removed — small in the toy, but the reporting template scales to real pilots.
+Day 2 uses **simulated** peak-load reduction = **−15%** on treated evening peak hours. Synthetic control recovers the injected effect; naive before/after is confounded by the shared weather jump.
 
 **Honest uncertainty:** report confidence intervals on the causal estimate (DiD CI today; conformal **empirical coverage** later — nominal 90% is not enough on its own).
 
@@ -58,6 +60,7 @@ pre-commit install
 
 pytest tests/ -q
 jupyter notebook notebooks/00_did_toy_warmup.ipynb
+jupyter notebook notebooks/01_synthetic_control.ipynb
 ```
 
 Optional LCL sample download (gitignored under `data/raw/lcl/`):
@@ -72,8 +75,8 @@ python -c "from src.data.london_smartmeter import download_lcl_sample, download_
 
 ```
 ├── docs/causal_mental_model.md   Causal concepts → energy examples
-├── notebooks/                    00_did_toy_warmup.ipynb (Day 1)
-├── src/causal/                   DiD simulator + estimator
+├── notebooks/                    00_did_toy_warmup.ipynb, 01_synthetic_control.ipynb
+├── src/causal/                   DiD + synthetic control simulator and estimators
 ├── src/data/                     LCL loader, Pecan Street stub
 ├── tests/                        Unit tests (no network)
 ├── data/README.md                Data acquisition
