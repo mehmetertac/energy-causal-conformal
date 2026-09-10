@@ -7,7 +7,7 @@
 ### Key commit
 
 ```
-(pending) Day 3: SC inference, placebos, robustness, finished Notebook 1 narrative
+a0de228 Day 3: SC inference, placebos, robustness, finished Notebook 1 narrative
 ```
 
 ---
