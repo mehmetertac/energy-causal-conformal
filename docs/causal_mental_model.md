@@ -56,6 +56,8 @@ Placebos ask: "Could a fake treatment produce a gap this large?"
 
 Placebos do not replace uncertainty intervals, but they sanity-check whether the estimated effect is distinguishable from noise.
 
+Notebook 1 reports both: a **bootstrap interval** on the post-period mean gap (synthetic path held fixed) and **in-space + in-time placebos**. On the simulator the SC ATT recovers the injected 15% peak cut; that recovery check is impossible on a real tariff.
+
 ---
 
 ## Why naive before/after proves nothing
@@ -103,13 +105,14 @@ When treatment is **not** as-if random (pilots, opt-in tariffs), match or weight
 
 **Energy example:** Match EV-trial enrollees to similar non-enrollees on pre-period evening load and feeder capacity before estimating shift effects.
 
-DoWhy / EconML enter later in the week; Day 1 uses plain two-way DiD OLS to calibrate intuition.
+Notebook 1 cross-checks SC with two-way DiD OLS and a propensity-weighted ATT (sklearn IPW and DoWhy `backdoor.propensity_score_weighting`) on household peak-load *changes*. In the simulator assignment is as-if random, so IPW is a method sketch for the opt-in case — high-usage homes self-selecting into a tariff.
 
 ---
 
 ## Honest uncertainty
 
 - Report **confidence intervals** on causal effects, not only point estimates.
+- For synthetic control, pair the gap interval with placebo p-values; the interval does not capture weight-estimation uncertainty.
 - For conformal prediction (Notebook 2), verify **empirical coverage** on a long rolling backtest — nominal 90% is not enough on its own.
 
 ---

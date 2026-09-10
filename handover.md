@@ -1,13 +1,13 @@
-# Handover — energy-causal-conformal (Day 2)
+# Handover — energy-causal-conformal (Day 3)
 
 **Repo:** https://github.com/mehmetertac/energy-causal-conformal  
-**Last updated:** 2026-09-08  
+**Last updated:** 2026-09-10  
 **Branch:** `main`
 
 ### Key commit
 
 ```
-1b89e35 Day 2: synthetic control counterfactual, SC notebook, heterogeneous simulator
+(pending) Day 3: SC inference, placebos, robustness, finished Notebook 1 narrative
 ```
 
 ---
@@ -16,9 +16,9 @@
 
 Build the **"questions ML alone can't answer" toolkit** — **effects and guarantees**, not just predictions.
 
-Two capstone notebooks (later this week):
+Two capstone notebooks:
 
-1. **Synthetic control** — tariff-style intervention on residential load (Pecan Street intent; simulated panel now)
+1. **Synthetic control** — tariff-style intervention on residential load (Pecan Street intent; simulated panel now). **Notebook 1 is the finished causal narrative.**
 2. **Conformal prediction** — MAPIE intervals on a Week 3-style LightGBM load forecast with long rolling backtest and empirical coverage checks
 
 Agent workflow rules: [AGENT.md](AGENT.md)
@@ -31,16 +31,18 @@ Agent workflow rules: [AGENT.md](AGENT.md)
 |---|---|
 | Repo scaffold (`src/`, `notebooks/`, `data/`, `results/`, `docs/`) | Done |
 | [AGENT.md](AGENT.md) + [handover.md](handover.md) | Done |
-| Causal mental model ([docs/causal_mental_model.md](docs/causal_mental_model.md)) — includes SC + placebos | Done |
+| Causal mental model ([docs/causal_mental_model.md](docs/causal_mental_model.md)) — SC, placebos, honest caveats | Done |
 | DiD simulator ([src/causal/simulate.py](src/causal/simulate.py)) | Done |
 | Heterogeneous SC simulator (`SynthSimulationConfig`, `simulate_heterogeneous_load`) | Done |
 | DiD estimator ([src/causal/did.py](src/causal/did.py)) | Done |
 | Synthetic control estimator ([src/causal/synth.py](src/causal/synth.py)) | Done |
+| SC inference: bootstrap gap CI, in-space + in-time placebos, donor/pre-period sensitivity | Done |
+| Propensity IPW + DoWhy PS-weighting cross-check ([src/causal/propensity.py](src/causal/propensity.py)) | Done |
 | Warmup notebook ([notebooks/00_did_toy_warmup.ipynb](notebooks/00_did_toy_warmup.ipynb)) | Done |
-| SC notebook ([notebooks/01_synthetic_control.ipynb](notebooks/01_synthetic_control.ipynb)) | Done |
+| Notebook 1 ([notebooks/01_synthetic_control.ipynb](notebooks/01_synthetic_control.ipynb)) — question → effect ± CI → placebos → utility decision | Done |
 | LCL loader + download helpers ([src/data/london_smartmeter.py](src/data/london_smartmeter.py)) | Done |
 | Pecan Street stub ([src/data/pecan_street.py](src/data/pecan_street.py)) | Done |
-| Unit tests (`test_did.py`, `test_simulate.py`, `test_synth.py`, `test_london_loader.py`) | Done |
+| Unit tests (`test_did.py`, `test_simulate.py`, `test_synth.py`, `test_propensity.py`, `test_london_loader.py`) | Done |
 | Pre-commit hooks (file size + pytest) | Done |
 | Data docs ([data/README.md](data/README.md)) — LCL swap noted | Done |
 
@@ -52,7 +54,7 @@ Agent workflow rules: [AGENT.md](AGENT.md)
 |---|---|---|
 | **Pecan Street Dataport** | Intended for Notebook 1 | Stub only — requires registration |
 | **Low Carbon London** | Open substitute (dToU vs flat 2013) | Loader + manual zip download (auto URL may 404) |
-| **Simulated panel** | Day 1 DiD toy + Day 2 SC experiment | Used in tests + notebooks |
+| **Simulated panel** | Day 1 DiD toy + Day 2–3 SC experiment | Used in tests + notebooks |
 
 See [data/README.md](data/README.md) for download commands. CI uses [tests/fixtures/lcl_sample.csv](tests/fixtures/lcl_sample.csv) only.
 
@@ -76,6 +78,7 @@ energy-causal-conformal/
 ├── src/causal/simulate.py
 ├── src/causal/did.py
 ├── src/causal/synth.py
+├── src/causal/propensity.py
 ├── src/data/london_smartmeter.py
 ├── src/data/pecan_street.py
 ├── tests/
@@ -131,10 +134,24 @@ python -c "from src.data.london_smartmeter import download_lcl_sample, download_
 | `daily_peak_series(...)` | Aggregate to daily mean peak-hour kW (treated + donor matrix) |
 | `fit_synthetic_control(...)` | Abadie simplex weights on pre-period; returns `SyntheticControlResult` |
 | `counterfactual_path(...)` | Weighted donor combination |
-| `in_space_placebos(...)` | In-space placebo gaps + p-value |
+| `in_space_placebos(...)` | Untreated donors as fake treated units; p-value |
+| `in_time_placebos(...)` | Fake intervention dates in the true pre-period; p-value |
+| `gap_uncertainty(...)` | Bootstrap CI on the post-period mean gap (weights held fixed) |
+| `donor_pool_sensitivity(...)` | Refit after dropping random donor subsets |
+| `pre_period_sensitivity(...)` | Refit using shorter pre-windows |
 | `naive_before_after_series(...)` | Naive daily-series before/after (confounded) |
 | `SyntheticControlResult` | `weights`, `treated`, `synthetic`, `pre_rmspe`, `att_kw`, `att_pct` |
 | `PlaceboResult` | `placebo_gaps_kw`, `treated_gap_kw`, `p_value` |
+| `GapUncertainty` | `att_kw`, `std_error`, `ci_low`, `ci_high`, `n_post`, `n_boot` |
+
+### Propensity — `src/causal/propensity.py`
+
+| Symbol | Purpose |
+|---|---|
+| `household_peak_deltas(...)` | Household pre/post mean peak and first difference |
+| `estimate_ipw_att(...)` | Logistic IPW ATT on the peak-load change |
+| `estimate_dowhy_att(...)` | DoWhy backdoor propensity-score weighting |
+| `PropensityResult` | `att_kw`, `n_treated`, `n_control`, `method` |
 
 ### Data — `src/data/`
 
@@ -147,11 +164,10 @@ python -c "from src.data.london_smartmeter import download_lcl_sample, download_
 
 ---
 
-## Suggested next step (Day 3+)
+## Suggested next step (Day 4+)
 
-1. **Synthetic control on LCL** — wire real dToU vs flat-rate households through the SC pipeline
-2. **Propensity / DoWhy** — document identification graph for opt-in tariff assignment
-3. **MAPIE + LightGBM** — port Week 3 forecaster; rolling backtest with empirical coverage
+1. **Synthetic control on LCL** — wire real dToU vs flat-rate households through the SC pipeline (no injected effect)
+2. **MAPIE + LightGBM** — port Week 3 forecaster; rolling backtest with empirical coverage (Notebook 2)
 
 ---
 
@@ -159,5 +175,6 @@ python -c "from src.data.london_smartmeter import download_lcl_sample, download_
 
 - Remote: `https://github.com/mehmetertac/energy-causal-conformal.git`
 - Python venv at `.venv/` (gitignored)
-- GPyTorch in requirements for later GP solar example; Day 1–2 tests do not import it
+- GPyTorch in requirements for later GP solar example; Day 1–3 tests do not import it
 - `scipy` added for synthetic control weight optimization (SLSQP)
+- DoWhy used for a propensity-score weighting cross-check in Notebook 1

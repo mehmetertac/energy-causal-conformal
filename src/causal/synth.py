@@ -26,11 +26,27 @@ class SyntheticControlResult:
 
 @dataclass(frozen=True)
 class PlaceboResult:
-    """In-space placebo gaps for each donor treated as a fake treated unit."""
+    """Placebo gaps (in-space or in-time) versus the treated-unit effect."""
 
     placebo_gaps_kw: pd.Series
     treated_gap_kw: float
     p_value: float
+
+
+@dataclass(frozen=True)
+class GapUncertainty:
+    """Uncertainty for the post-period mean gap, treating the synthetic path as fixed.
+
+    This interval captures day-to-day gap variability after weights are fit. It does
+    not include uncertainty from weight estimation; placebo tests cover that role.
+    """
+
+    att_kw: float
+    std_error: float
+    ci_low: float
+    ci_high: float
+    n_post: int
+    n_boot: int
 
 
 def inject_peak_reduction(
@@ -176,6 +192,11 @@ def naive_before_after_series(treated: pd.Series, intervention_day: int) -> floa
     return float(post.mean() - pre.mean())
 
 
+def _placebo_p_value(placebo_gaps: pd.Series, treated_gap: float) -> float:
+    n_extreme = int((np.abs(placebo_gaps) >= abs(treated_gap)).sum())
+    return float((n_extreme + 1) / (len(placebo_gaps) + 1))
+
+
 def in_space_placebos(
     treated: pd.Series,
     donors: pd.DataFrame,
@@ -204,10 +225,184 @@ def in_space_placebos(
     placebo_gaps = pd.Series(gaps, name="placebo_gap_kw")
     treated_result = fit_synthetic_control(treated, donors, intervention_day=intervention_day)
     treated_gap = treated_result.att_kw
-    n_extreme = int((np.abs(placebo_gaps) >= abs(treated_gap)).sum())
-    p_value = float((n_extreme + 1) / (len(placebo_gaps) + 1))
     return PlaceboResult(
         placebo_gaps_kw=placebo_gaps.sort_values(),
         treated_gap_kw=treated_gap,
-        p_value=p_value,
+        p_value=_placebo_p_value(placebo_gaps, treated_gap),
     )
+
+
+def in_time_placebos(
+    treated: pd.Series,
+    donors: pd.DataFrame,
+    intervention_day: int,
+    fake_days: list[int] | None = None,
+    min_pre_days: int = 15,
+    min_placebo_post_days: int = 5,
+    max_placebos: int = 8,
+) -> PlaceboResult:
+    """Run in-time placebos on fake dates that fall entirely in the true pre-period.
+
+    Each fake date is treated as an intervention using only days before the real
+    tariff, so the placebo 'post' window is known to be untreated.
+    """
+    pre_treated = treated.loc[treated.index < intervention_day]
+    pre_donors = donors.loc[donors.index < intervention_day]
+    if pre_treated.empty or pre_donors.empty:
+        raise ValueError("No pre-period observations for in-time placebos")
+
+    if fake_days is None:
+        candidates = [
+            int(day)
+            for day in pre_treated.index
+            if day >= min_pre_days and (intervention_day - int(day)) >= min_placebo_post_days
+        ]
+        if len(candidates) > max_placebos:
+            step = max(1, len(candidates) // max_placebos)
+            fake_days = candidates[::step][:max_placebos]
+        else:
+            fake_days = candidates
+
+    if not fake_days:
+        raise ValueError("No valid fake intervention dates for in-time placebos")
+
+    gaps: dict[int, float] = {}
+    for fake_day in fake_days:
+        try:
+            result = fit_synthetic_control(
+                pre_treated,
+                pre_donors,
+                intervention_day=int(fake_day),
+            )
+        except (RuntimeError, ValueError):
+            continue
+        gaps[int(fake_day)] = result.att_kw
+
+    if not gaps:
+        raise ValueError("No successful in-time placebo fits")
+
+    placebo_gaps = pd.Series(gaps, name="placebo_gap_kw")
+    treated_result = fit_synthetic_control(treated, donors, intervention_day=intervention_day)
+    treated_gap = treated_result.att_kw
+    return PlaceboResult(
+        placebo_gaps_kw=placebo_gaps.sort_index(),
+        treated_gap_kw=treated_gap,
+        p_value=_placebo_p_value(placebo_gaps, treated_gap),
+    )
+
+
+def gap_uncertainty(
+    result: SyntheticControlResult,
+    n_boot: int = 500,
+    seed: int = 0,
+    alpha: float = 0.05,
+) -> GapUncertainty:
+    """Bootstrap the post-period mean gap, holding synthetic weights fixed."""
+    if n_boot < 1:
+        raise ValueError("n_boot must be at least 1")
+
+    post_mask = result.treated.index >= result.intervention_day
+    gaps = (result.treated.loc[post_mask] - result.synthetic.loc[post_mask]).to_numpy()
+    if gaps.size == 0:
+        raise ValueError("Post-period is empty; cannot compute gap uncertainty")
+
+    att_kw = float(np.mean(gaps))
+    std_error = float(np.std(gaps, ddof=1) / np.sqrt(gaps.size)) if gaps.size > 1 else 0.0
+    rng = np.random.default_rng(seed)
+    boot_means = np.array(
+        [float(np.mean(rng.choice(gaps, size=gaps.size, replace=True))) for _ in range(n_boot)]
+    )
+    ci_low = float(np.quantile(boot_means, alpha / 2.0))
+    ci_high = float(np.quantile(boot_means, 1.0 - alpha / 2.0))
+    return GapUncertainty(
+        att_kw=att_kw,
+        std_error=std_error,
+        ci_low=ci_low,
+        ci_high=ci_high,
+        n_post=int(gaps.size),
+        n_boot=n_boot,
+    )
+
+
+def donor_pool_sensitivity(
+    treated: pd.Series,
+    donors: pd.DataFrame,
+    intervention_day: int,
+    drop_counts: tuple[int, ...] = (0, 5, 10, 15),
+    n_draws: int = 4,
+    seed: int = 0,
+) -> pd.DataFrame:
+    """Refit SC after dropping random donor subsets; returns one row per draw."""
+    n_donors = donors.shape[1]
+    rng = np.random.default_rng(seed)
+    rows: list[dict[str, float | int]] = []
+
+    for drop_count in drop_counts:
+        if drop_count < 0 or drop_count >= n_donors:
+            continue
+        keep = n_donors - drop_count
+        n_iter = 1 if drop_count == 0 else n_draws
+        for draw in range(n_iter):
+            if drop_count == 0:
+                subset = donors
+            else:
+                keep_ids = rng.choice(donors.columns, size=keep, replace=False)
+                subset = donors.loc[:, keep_ids]
+            try:
+                result = fit_synthetic_control(treated, subset, intervention_day=intervention_day)
+            except (RuntimeError, ValueError):
+                continue
+            rows.append(
+                {
+                    "drop_count": int(drop_count),
+                    "n_donors": int(subset.shape[1]),
+                    "draw": int(draw),
+                    "att_kw": result.att_kw,
+                    "att_pct": result.att_pct,
+                    "pre_rmspe": result.pre_rmspe,
+                }
+            )
+
+    if not rows:
+        raise ValueError("No successful donor-pool sensitivity fits")
+    return pd.DataFrame(rows)
+
+
+def pre_period_sensitivity(
+    treated: pd.Series,
+    donors: pd.DataFrame,
+    intervention_day: int,
+    pre_lengths: tuple[int, ...] | None = None,
+) -> pd.DataFrame:
+    """Refit SC using only the last ``pre_length`` pre-period days."""
+    n_pre = int((treated.index < intervention_day).sum())
+    if n_pre < 2:
+        raise ValueError("Need at least 2 pre-period days for pre-period sensitivity")
+
+    if pre_lengths is None:
+        grid = (20, 30, 40, 50, 60)
+        pre_lengths = tuple(length for length in grid if 5 <= length <= n_pre)
+        if not pre_lengths:
+            pre_lengths = (n_pre,)
+
+    rows: list[dict[str, float | int]] = []
+    for pre_length in pre_lengths:
+        start_day = intervention_day - int(pre_length)
+        y = treated.loc[treated.index >= start_day]
+        x = donors.loc[donors.index >= start_day]
+        try:
+            result = fit_synthetic_control(y, x, intervention_day=intervention_day)
+        except (RuntimeError, ValueError):
+            continue
+        rows.append(
+            {
+                "pre_length": int(pre_length),
+                "att_kw": result.att_kw,
+                "att_pct": result.att_pct,
+                "pre_rmspe": result.pre_rmspe,
+            }
+        )
+
+    if not rows:
+        raise ValueError("No successful pre-period sensitivity fits")
+    return pd.DataFrame(rows)
