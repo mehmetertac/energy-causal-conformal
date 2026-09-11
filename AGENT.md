@@ -11,11 +11,13 @@ Guidance for agents working in **energy-causal-conformal**. Read this file first
 | [README.md](README.md) | Project goal, setup, two-notebook framing, tariff narrative |
 | [handover.md](handover.md) | Current status, repo layout, module API, week roadmap |
 | [docs/causal_mental_model.md](docs/causal_mental_model.md) | Potential outcomes, DiD assumptions, synthetic control, energy examples |
+| [docs/conformal_mental_model.md](docs/conformal_mental_model.md) | Split conformal, CQR, exchangeability / blocked calibration |
 | [data/README.md](data/README.md) | Pecan Street intent, LCL substitute, download commands |
 | [pytest.ini](pytest.ini) | Test discovery (`tests/`, `pythonpath = .`) |
 | [requirements.txt](requirements.txt) | Dependencies (DoWhy, EconML, MAPIE, GPyTorch, LightGBM) |
 | [notebooks/](notebooks/) | Exploratory walkthroughs |
 | [src/causal/](src/causal/) | DiD + synthetic control simulators and estimators |
+| [src/conformal/](src/conformal/) | QuantileLGBM, MAPIE CQR, chronological split, coverage |
 | [src/data/](src/data/) | LCL loader + Pecan Street stub |
 | [tests/](tests/) | Unit tests (synthetic data; no network in CI) |
 
@@ -77,7 +79,7 @@ pre-commit install
 
 - Do not guess API or roadmap from memory — use [handover.md](handover.md) for status and [README.md](README.md) for how to run.
 - Match existing conventions in [src/causal/did.py](src/causal/did.py) (dataclasses, statsmodels OLS, explicit column names) when extending causal code.
-- Conformal evaluation (later) must report **empirical coverage** on rolling backtests, not nominal coverage alone.
+- Conformal evaluation must report **empirical coverage** on held-out or rolling backtests, not nominal coverage alone.
 
 ---
 

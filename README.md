@@ -11,13 +11,15 @@ Utilities constantly ask causal questions (pilots, tariffs, curtailment counterf
 | Notebook | Question | Method |
 |---|---|---|
 | **1** | Did the tariff reduce peak residential load? | Synthetic control on smart-meter data |
-| **2** (later) | Are forecast intervals trustworthy in production? | MAPIE conformal intervals on a LightGBM load forecast + long rolling backtest |
+| **2** | Are forecast intervals trustworthy in production? | MAPIE CQR on Week 3 quantile LightGBM — first coverage numbers; long rolling backtest next |
 
 **Day 1:** causal mental model + DiD toy that recovers a **known injected treatment effect**. See [`notebooks/00_did_toy_warmup.ipynb`](notebooks/00_did_toy_warmup.ipynb).
 
 **Days 2–3:** synthetic control counterfactual, effect ± uncertainty, in-space and in-time placebos, DiD/propensity cross-checks, and a utility rollout read. See [`notebooks/01_synthetic_control.ipynb`](notebooks/01_synthetic_control.ipynb). Uses simulated Pecan-shaped data until Dataport is available. The notebook recovers a **known 15% peak-load cut**; naive before/after does not.
 
-Concept primer: [`docs/causal_mental_model.md`](docs/causal_mental_model.md)
+**Day 4:** conformal mental model + MAPIE CQR on the Week 3 quantile LightGBM. See [`notebooks/02_conformal_forecast.ipynb`](notebooks/02_conformal_forecast.ipynb). Raw P10–P90 bands under-cover; CQR hits nominal by widening intervals.
+
+Concept primers: [`docs/causal_mental_model.md`](docs/causal_mental_model.md) · [`docs/conformal_mental_model.md`](docs/conformal_mental_model.md)
 
 ---
 
@@ -33,7 +35,7 @@ A causal **average treatment effect (ATT)** on load is not just a kWh number —
 
 Notebook 1 uses **simulated** peak-load reduction = **−15%** on treated evening peak hours. Synthetic control recovers the injected effect (bootstrap interval excludes zero); naive before/after is confounded by the shared weather jump. Placebos on untreated homes and fake dates put the real gap in the tail.
 
-**Honest uncertainty:** report intervals on the causal estimate (SC gap bootstrap + DiD CI today; conformal **empirical coverage** later — nominal 90% is not enough on its own). A real tariff has no injected ground truth — see the notebook's "what would break" section.
+**Honest uncertainty:** report intervals on the causal estimate (SC gap bootstrap + DiD CI) and on forecasts (conformal **empirical coverage** — nominal 90% is not enough on its own). A real tariff has no injected ground truth — see Notebook 1's "what would break" section.
 
 ---
 
@@ -61,6 +63,7 @@ pre-commit install
 pytest tests/ -q
 jupyter notebook notebooks/00_did_toy_warmup.ipynb
 jupyter notebook notebooks/01_synthetic_control.ipynb
+jupyter notebook notebooks/02_conformal_forecast.ipynb
 ```
 
 Optional LCL sample download (gitignored under `data/raw/lcl/`):
@@ -74,10 +77,12 @@ python -c "from src.data.london_smartmeter import download_lcl_sample, download_
 ## Project structure
 
 ```
-├── docs/causal_mental_model.md   Causal concepts → energy examples
-├── notebooks/                    00_did_toy_warmup.ipynb, 01_synthetic_control.ipynb
-├── src/causal/                   DiD, synthetic control, propensity IPW/DoWhy
-├── src/data/                     LCL loader, Pecan Street stub
+├── docs/causal_mental_model.md     Causal concepts → energy examples
+├── docs/conformal_mental_model.md  Split conformal, CQR, exchangeability
+├── notebooks/                      00–02 notebooks
+├── src/causal/                     DiD, synthetic control, propensity IPW/DoWhy
+├── src/conformal/                  QuantileLGBM, MAPIE CQR, coverage metrics
+├── src/data/                       LCL loader, Pecan Street stub
 ├── tests/                        Unit tests (no network)
 ├── data/README.md                Data acquisition
 ├── AGENT.md                      Agent workflow rules
@@ -92,7 +97,7 @@ python -c "from src.data.london_smartmeter import download_lcl_sample, download_
 |---|---|
 | DoWhy / EconML | Causal graphs, propensity, heterogeneous effects |
 | MAPIE | Conformal prediction intervals |
-| LightGBM | Point forecaster baseline (Notebook 2) |
+| LightGBM | Quantile forecaster (Week 3 port in Notebook 2) |
 | GPyTorch | Brief GP solar example (compressed; conformal wins in production) |
 
 ---

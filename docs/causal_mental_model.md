@@ -113,7 +113,7 @@ Notebook 1 cross-checks SC with two-way DiD OLS and a propensity-weighted ATT (s
 
 - Report **confidence intervals** on causal effects, not only point estimates.
 - For synthetic control, pair the gap interval with placebo p-values; the interval does not capture weight-estimation uncertainty.
-- For conformal prediction (Notebook 2), verify **empirical coverage** on a long rolling backtest — nominal 90% is not enough on its own.
+- For conformal prediction (Notebook 2), verify **empirical coverage** on a long rolling backtest — nominal 90% is not enough on its own. See [`docs/conformal_mental_model.md`](conformal_mental_model.md).
 
 ---
 
@@ -123,5 +123,6 @@ Notebook 1 cross-checks SC with two-way DiD OLS and a propensity-weighted ATT (s
 |---|---|
 | [README.md](../README.md) | Project goal, setup, tariff narrative |
 | [handover.md](../handover.md) | Current status and module API |
+| [docs/conformal_mental_model.md](conformal_mental_model.md) | Split conformal, CQR, exchangeability caveats |
 | [data/README.md](../data/README.md) | Pecan Street intent + LCL substitute |
 | [AGENT.md](../AGENT.md) | Agent workflow rules |
