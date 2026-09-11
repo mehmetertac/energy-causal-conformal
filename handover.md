@@ -7,7 +7,7 @@
 ### Key commit
 
 ```
-(pending) Day 4: conformal mental model, MAPIE CQR on Week 3 quantile LightGBM, Notebook 2
+8be442b Day 4: MAPIE CQR on Week 3 quantile LightGBM, Notebook 2
 ```
 
 ---
