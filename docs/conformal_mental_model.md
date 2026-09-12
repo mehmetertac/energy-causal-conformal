@@ -52,10 +52,10 @@ Instead:
 | Strategy | Idea |
 |---|---|
 | **Blocked / chronological split** | Train → calibrate → test in time order; optional gap (24 h) between blocks |
-| **Rolling calibration** | Refit or re-conformalize on a sliding past window (next increment) |
+| **Rolling calibration** | Refit or re-conformalize on an expanding past window — **implemented** in [`src/conformal/backtest.py`](../src/conformal/backtest.py) |
 | **EnbPI / ACI** | MAPIE time-series methods that update scores or adapt quantiles online |
 
-This repo starts with a **single chronological split** — honest first coverage numbers, not a claim of infinite-horizon validity.
+This repo now has both a **single chronological split** (honest first numbers) and a **long rolling backtest** (expanding train, fixed cal/test blocks, 30-day step). Notebook 2's **coverage-over-time chart** is the production monitoring view — does empirical coverage track nominal month after month?
 
 ---
 
@@ -76,8 +76,10 @@ This repo starts with a **single chronological split** — honest first coverage
 ## What to report in production
 
 - **Empirical coverage** on a long held-out backtest — nominal 90% is not enough on its own.
+- **Coverage over time** — rolling-origin fold table plotted by test month (Notebook 2 money chart).
 - **Mean interval width** alongside coverage (efficiency vs guarantee).
-- **Coverage by regime** (high-wind vs low-wind hours) when possible.
+- **Coverage by regime** (high-wind vs low-wind terciles) and by calendar month.
+- **Pinball loss** at P10/P50/P90 — confirm CQR widened for coverage, not to destroy median sharpness.
 - **Calibration window** length and refresh policy.
 
 See also: [`docs/causal_mental_model.md`](causal_mental_model.md) — honest uncertainty on causal effects uses the same discipline.

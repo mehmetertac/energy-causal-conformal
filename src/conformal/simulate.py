@@ -16,6 +16,9 @@ class WindSimulationConfig:
     seed: int = 42
     base_capacity_mw: float = 11_000.0
     tail_scale: float = 1.8
+    seasonal_heteroskedasticity: bool = False
+    drift_day: int | None = None
+    drift_scale_factor: float = 1.35
 
 
 def _feature_columns() -> list[str]:
@@ -59,6 +62,12 @@ def simulate_wind_forecast(config: WindSimulationConfig | None = None) -> pd.Dat
 
         # Heteroskedastic + heavy-tailed residuals: quantile models miss tails
         sigma = 350.0 + 0.04 * base + 120.0 * np.abs(nwp_speed - 8.0)
+        if config.seasonal_heteroskedasticity:
+            day_of_year = ts.dayofyear
+            seasonal = 1.0 + 0.55 * np.sin(2 * np.pi * (day_of_year - 15) / 365.25)
+            sigma *= seasonal
+        if config.drift_day is not None and step >= config.drift_day * 24:
+            sigma *= config.drift_scale_factor
         noise = rng.standard_t(df=3) * sigma * config.tail_scale
         if rng.random() < 0.03:
             noise += rng.choice([-1.0, 1.0]) * rng.uniform(800.0, 1800.0)

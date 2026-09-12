@@ -1,13 +1,13 @@
-# Handover — energy-causal-conformal (Day 4)
+# Handover — energy-causal-conformal (Day 5)
 
 **Repo:** https://github.com/mehmetertac/energy-causal-conformal  
-**Last updated:** 2026-09-11  
+**Last updated:** 2026-09-12  
 **Branch:** `main`
 
 ### Key commit
 
 ```
-8be442b Day 4: MAPIE CQR on Week 3 quantile LightGBM, Notebook 2
+(uncommitted) Day 5: rolling-origin CQR backtest, Notebook 2 money chart, WEEK_08_REFLECTION
 ```
 
 ---
@@ -19,7 +19,7 @@ Build the **"questions ML alone can't answer" toolkit** — **effects and guaran
 Two capstone notebooks:
 
 1. **Synthetic control** — tariff-style intervention on residential load (Pecan Street intent; simulated panel now). **Notebook 1 is the finished causal narrative.**
-2. **Conformal prediction** — MAPIE CQR on Week 3-style quantile LightGBM with first empirical coverage numbers (Notebook 2). Long rolling backtest is next.
+2. **Conformal prediction** — MAPIE CQR on Week 3-style quantile LightGBM with rolling-origin coverage verification (Notebook 2). **Long backtest + market narrative done.**
 
 Agent workflow rules: [AGENT.md](AGENT.md)
 
@@ -38,8 +38,9 @@ Agent workflow rules: [AGENT.md](AGENT.md)
 | Propensity IPW + DoWhy cross-check | Done |
 | Warmup notebook ([notebooks/00_did_toy_warmup.ipynb](notebooks/00_did_toy_warmup.ipynb)) | Done |
 | Notebook 1 ([notebooks/01_synthetic_control.ipynb](notebooks/01_synthetic_control.ipynb)) | Done |
-| Conformal modules ([src/conformal/](src/conformal/)) — synthetic wind, QuantileLGBM, CQR, coverage | Done |
-| Notebook 2 ([notebooks/02_conformal_forecast.ipynb](notebooks/02_conformal_forecast.ipynb)) — raw vs CQR coverage | Done |
+| Conformal modules ([src/conformal/](src/conformal/)) — synthetic wind, QuantileLGBM, CQR, coverage, rolling backtest | Done |
+| Notebook 2 ([notebooks/02_conformal_forecast.ipynb](notebooks/02_conformal_forecast.ipynb)) — single split + long rolling backtest, coverage-over-time chart | Done |
+| [WEEK_08_REFLECTION.md](WEEK_08_REFLECTION.md) | Done |
 | LCL loader + Pecan Street stub | Done |
 | Unit tests (causal + conformal + data) | Done |
 | Pre-commit hooks (file size + pytest) | Done |
@@ -66,6 +67,7 @@ energy-causal-conformal/
 ├── README.md
 ├── AGENT.md
 ├── handover.md
+├── WEEK_08_REFLECTION.md
 ├── requirements.txt
 ├── pytest.ini
 ├── .pre-commit-config.yaml
@@ -78,6 +80,12 @@ energy-causal-conformal/
 ├── notebooks/02_conformal_forecast.ipynb
 ├── src/causal/
 ├── src/conformal/
+│   ├── backtest.py
+│   ├── coverage.py
+│   ├── cqr.py
+│   ├── quantile_lgbm.py
+│   ├── simulate.py
+│   └── split.py
 ├── src/data/
 ├── tests/
 └── results/
@@ -145,7 +153,7 @@ jupyter notebook notebooks/02_conformal_forecast.ipynb
 
 | Symbol | Purpose |
 |---|---|
-| `WindSimulationConfig` | Synthetic wind series config |
+| `WindSimulationConfig` | Synthetic wind series config (`seasonal_heteroskedasticity`, `drift_day`) |
 | `simulate_wind_forecast()` | Hourly DE-style wind with heteroskedastic tails |
 | `feature_columns()` | Modeling feature names for synthetic wind |
 | `QuantileLGBM` | Week 3 port — one LightGBM per quantile (P05–P95) |
@@ -153,7 +161,12 @@ jupyter notebook notebooks/02_conformal_forecast.ipynb
 | `chronological_conformal_split(...)` | Train / cal / test with optional gap |
 | `run_conformal_cqr(...)` | Fit quantile LGBM + MAPIE CQR at 80%/90% |
 | `ConformalForecastResult` | Raw vs CQR coverage on test block |
-| `pi_coverage(...)` / `evaluate_intervals(...)` | Empirical coverage + width metrics |
+| `RollingOriginConfig` | Hour-based expanding-window backtest settings |
+| `rolling_origin_backtest(...)` | Expanding train + fixed cal/test CQR walk |
+| `RollingBacktestResult` | `fold_table`, `predictions` with month/regime tags |
+| `coverage_by_month(...)` / `coverage_by_regime(...)` | Grouped coverage + width |
+| `pinball_comparison(...)` | Raw vs CQR pinball at P10/P50/P90 |
+| `pi_coverage(...)` / `evaluate_intervals(...)` / `pinball_loss(...)` | Metrics |
 | `CoverageResult` | `coverage`, `nominal`, `coverage_gap`, `mean_width` |
 
 ### Data — `src/data/`
@@ -166,11 +179,11 @@ jupyter notebook notebooks/02_conformal_forecast.ipynb
 
 ---
 
-## Suggested next step (Day 5+)
+## Suggested next step (Day 6+)
 
-1. **Long rolling conformal backtest** — refit/re-conformalize on expanding windows; coverage by regime
-2. **Synthetic control on LCL** — real dToU vs flat-rate households (no injected effect)
-3. **Optional:** wire sibling `wind-quantile-forecast` parquet as default Notebook 2 input
+1. **Synthetic control on LCL** — real dToU vs flat-rate households (no injected effect)
+2. **Optional:** wire sibling `wind-quantile-forecast` parquet as default Notebook 2 input
+3. **Optional A/B:** CQR vs split conformal around P50 on the same rolling walk
 
 ---
 

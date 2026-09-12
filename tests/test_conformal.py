@@ -5,7 +5,14 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from src.conformal.coverage import evaluate_intervals, pi_coverage
+from src.conformal.backtest import (
+    RollingOriginConfig,
+    coverage_by_month,
+    coverage_by_regime,
+    pinball_comparison,
+    rolling_origin_backtest,
+)
+from src.conformal.coverage import evaluate_intervals, pinball_loss, pi_coverage
 from src.conformal.cqr import _cqr_quantiles, run_conformal_cqr
 from src.conformal.quantile_lgbm import QuantileLGBM
 from src.conformal.simulate import WindSimulationConfig, feature_columns, simulate_wind_forecast
@@ -74,3 +81,79 @@ def test_evaluate_intervals_reports_gap() -> None:
     summary = evaluate_intervals(y, lo, hi, nominal=0.80)
     assert summary.n_obs == 4
     assert summary.coverage_gap == summary.coverage - 0.80
+
+
+def test_pinball_loss_zero_when_predictions_match() -> None:
+    y = np.array([1.0, 2.0, 3.0])
+    assert pinball_loss(y, y, 0.5) == 0.0
+
+
+def test_pinball_loss_positive_when_predictions_miss() -> None:
+    y = np.array([1.0, 2.0, 3.0])
+    pred = np.array([0.0, 0.0, 0.0])
+    assert pinball_loss(y, pred, 0.5) > 0.0
+
+
+def test_rolling_backtest_returns_multiple_folds() -> None:
+    frame = simulate_wind_forecast(WindSimulationConfig(n_days=200, seed=3))
+    cols = feature_columns()
+    cfg = RollingOriginConfig(
+        min_train_hours=30 * 24,
+        cal_hours=7 * 24,
+        test_hours=14 * 24,
+        step_hours=14 * 24,
+        gap_hours=24,
+    )
+    result = rolling_origin_backtest(
+        frame,
+        cols,
+        config=cfg,
+        model_params={"n_estimators": 20, "num_leaves": 31},
+    )
+    assert len(result.fold_table) >= 2
+    assert {"month", "wind_regime", "fold_id"}.issubset(result.predictions.columns)
+    assert not coverage_by_month(result.predictions).empty
+    assert set(coverage_by_regime(result.predictions)["wind_regime"]) <= {"low", "mid", "high"}
+
+
+def test_rolling_backtest_cqr_wider_and_closer_to_nominal() -> None:
+    frame = simulate_wind_forecast(WindSimulationConfig(n_days=200, seed=11))
+    cols = feature_columns()
+    cfg = RollingOriginConfig(
+        min_train_hours=30 * 24,
+        cal_hours=7 * 24,
+        test_hours=14 * 24,
+        step_hours=14 * 24,
+        gap_hours=24,
+    )
+    result = rolling_origin_backtest(
+        frame,
+        cols,
+        config=cfg,
+        model_params={"n_estimators": 20, "num_leaves": 31},
+    )
+    raw_gap = abs(result.fold_table["raw_80_coverage"].mean() - 0.80)
+    cqr_gap = abs(result.fold_table["cqr_80_coverage"].mean() - 0.80)
+    assert cqr_gap <= raw_gap + 0.05
+    assert result.fold_table["cqr_80_width"].mean() >= result.fold_table["raw_80_width"].mean()
+
+
+def test_pinball_comparison_p50_unchanged_by_cqr() -> None:
+    frame = simulate_wind_forecast(WindSimulationConfig(n_days=200, seed=5))
+    cols = feature_columns()
+    cfg = RollingOriginConfig(
+        min_train_hours=30 * 24,
+        cal_hours=7 * 24,
+        test_hours=14 * 24,
+        step_hours=14 * 24,
+        gap_hours=24,
+    )
+    result = rolling_origin_backtest(
+        frame,
+        cols,
+        config=cfg,
+        model_params={"n_estimators": 20, "num_leaves": 31},
+    )
+    table = pinball_comparison(result.predictions)
+    p50 = table.loc[table["quantile"] == "P50"].iloc[0]
+    assert p50["raw_pinball"] == p50["cqr_pinball"]

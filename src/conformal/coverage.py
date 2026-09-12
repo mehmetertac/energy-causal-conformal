@@ -62,3 +62,18 @@ def evaluate_intervals(
         mean_width=mean_interval_width(p_lo, p_hi),
         n_obs=int(len(yt)),
     )
+
+
+def pinball_loss(
+    y_true: np.ndarray | pd.Series,
+    y_pred: np.ndarray | pd.Series,
+    quantile: float,
+) -> float:
+    """Mean pinball (quantile) loss at ``quantile`` in (0, 1)."""
+    yt = np.asarray(y_true, dtype=float)
+    yp = np.asarray(y_pred, dtype=float)
+    if len(yt) == 0:
+        return float("nan")
+    err = yt - yp
+    q = float(quantile)
+    return float(np.mean(np.maximum(q * err, (q - 1.0) * err)))
