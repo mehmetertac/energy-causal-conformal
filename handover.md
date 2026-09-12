@@ -7,7 +7,7 @@
 ### Key commit
 
 ```
-(uncommitted) Day 5: rolling-origin CQR backtest, Notebook 2 money chart, WEEK_08_REFLECTION
+be81834 Day 5: rolling-origin CQR backtest, Notebook 2 money chart, Week 8 reflection
 ```
 
 ---
