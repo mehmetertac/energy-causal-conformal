@@ -7,7 +7,7 @@
 ### Key commit
 
 ```
-Day 6: brief GP solar appendix, Notebook 2 five-beat tighten, results/ summary figures
+e3b57d2 Day 6: brief GP solar appendix, tighten Notebook 2, shared results export
 ```
 
 ---
