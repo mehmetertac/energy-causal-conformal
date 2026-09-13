@@ -1,45 +1,95 @@
 # energy-causal-conformal
 
-Build the **"questions ML alone can't answer" toolkit** — **effects and guarantees**, not just predictions.
+**Effects and guarantees, not just predictions.**
 
-Utilities constantly ask causal questions (pilots, tariffs, curtailment counterfactuals). Production risk teams want **distribution-free interval coverage**, not only Bayesian posteriors. This repo makes both explicit and testable.
+Utilities and balancing desks constantly ask two questions that point forecasts alone cannot answer:
+
+1. **What changed because of the intervention?** — Did the tariff actually cut peak load, or did weather move the numbers?
+2. **How confident are you entitled to be?** — Does an "80% band" cover 80% of hours on a long backtest, or is reserve sized from a label that lies?
+
+This repo makes both questions explicit, testable, and tied to decisions: rollout evidence for pilots, and contract-grade interval coverage for forecast desks.
+
+Paste-ready narrative: [`docs/two_questions.md`](docs/two_questions.md)
 
 ---
 
-## Two-notebook arc
+## Two notebooks
 
-| Notebook | Question | Method |
+| # | Question | Method | Evidence |
+|---|---|---|---|
+| **1** | Did the tariff work? | Synthetic control + placebos | Recovers injected **−15%** peak cut; naive before/after does not |
+| **2** | Can you trust the intervals? | MAPIE CQR + rolling-origin backtest | Raw P10–P90 **~58%** empirical coverage; CQR **~76%** on 365-day walk |
+
+### Notebook 1 — Did the tariff reduce peak residential load?
+
+[`notebooks/01_synthetic_control.ipynb`](notebooks/01_synthetic_control.ipynb)
+
+A peak-shaving tariff pilot on five homes. Synthetic control builds a donor-weighted counterfactual `Y(0)`, estimates the average treatment effect on the treated (ATT), and stress-tests with bootstrap uncertainty, in-space and in-time placebos, DiD/IPW cross-checks, and donor-pool sensitivity.
+
+On simulated data with a **known 15% peak-load cut**, SC recovers **−0.278 kW (−15.0%)**; naive before/after is confounded by a shared weather jump. Placebo p-values put the real gap in the tail.
+
+![Treated peak load vs synthetic counterfactual](docs/figures/nb01_treated_vs_synthetic.png)
+
+### Notebook 2 — Are forecast intervals trustworthy in production?
+
+[`notebooks/02_conformal_forecast.ipynb`](notebooks/02_conformal_forecast.ipynb)
+
+Week 3-style quantile LightGBM (pinball loss at P10/P50/P90) wrapped with MAPIE conformalized quantile regression (CQR). Chronological train → calibrate → test splits, then a **365-day rolling-origin backtest** with coverage-over-time monitoring.
+
+On synthetic day-ahead wind (heteroskedastic tails, mid-sample drift):
+
+| Band | Nominal | Empirical (held-out test) | Rolling mean (8 folds) |
+|---|---|---|---|
+| Raw P10–P90 | 80% | **76.7%** | **57.8%** |
+| CQR 80% | 80% | **77.2%** | **75.9%** |
+
+CQR pays in width (~6,400 MW vs ~4,000 MW mean band) and buys a label a reserve desk can monitor month after month.
+
+![Rolling-origin coverage over time](docs/figures/nb02_coverage_over_time.png)
+
+---
+
+## Conformal vs Bayesian intervals
+
+| | Bayesian GP (Notebook 3 appendix) | Conformal CQR (Notebook 2) |
 |---|---|---|
-| **1** | Did the tariff reduce peak residential load? | Synthetic control on smart-meter data |
-| **2** | Are forecast intervals trustworthy in production? | MAPIE CQR + rolling-origin backtest — coverage-over-time, by month/regime, pinball sharpness |
+| **Interval meaning** | Posterior credible band (± 2σ) | Coverage-calibrated prediction interval |
+| **Honesty depends on** | Kernel + noise model being right | Exchangeability + calibration set |
+| **Production scale** | Demo only (~100 points, O(n³)) | Thousands of hourly rows, rolling re-calibration |
 
-**Day 1:** causal mental model + DiD toy that recovers a **known injected treatment effect**. See [`notebooks/00_did_toy_warmup.ipynb`](notebooks/00_did_toy_warmup.ipynb).
-
-**Days 2–3:** synthetic control counterfactual, effect ± uncertainty, in-space and in-time placebos, DiD/propensity cross-checks, and a utility rollout read. See [`notebooks/01_synthetic_control.ipynb`](notebooks/01_synthetic_control.ipynb). Uses simulated Pecan-shaped data until Dataport is available. The notebook recovers a **known 15% peak-load cut**; naive before/after does not.
-
-**Day 4–5:** conformal mental model + MAPIE CQR on the Week 3 quantile LightGBM. See [`notebooks/02_conformal_forecast.ipynb`](notebooks/02_conformal_forecast.ipynb). Five-beat narrative: method → CQR setup → coverage-over-time → width trade-off → market read. Summary figures export to `results/`. Reflection: [`WEEK_08_REFLECTION.md`](WEEK_08_REFLECTION.md).
-
-**Day 6 (appendix):** brief Bayesian GP on short-horizon solar — interview talking-point only. See [`notebooks/03_gp_solar.ipynb`](notebooks/03_gp_solar.ipynb). ExactGP with RBF + periodic kernel; ± 2σ credible bands vs why production uses CQR instead.
+GP bands answer *"what does the model believe?"* CQR answers *"does the label match held-out frequency?"* Production reserve desks need the second. See [`notebooks/03_gp_solar.ipynb`](notebooks/03_gp_solar.ipynb) for the compressed contrast.
 
 Concept primers: [`docs/causal_mental_model.md`](docs/causal_mental_model.md) · [`docs/conformal_mental_model.md`](docs/conformal_mental_model.md)
 
 ---
 
-## What this means in tariff / market terms
+## Reproduce from a clean clone
 
-A causal **average treatment effect (ATT)** on load is not just a kWh number — it translates to:
+Requires **Python 3.11+**.
 
-| Quantity | Formula (illustrative) |
-|---|---|
-| **Peak MW avoided** | `ATT_kW × n_treated_homes / 1000` |
-| **Wholesale energy savings** | `ΔkWh_peak × price_EUR_per_MWh / 1000` |
-| **Customer bill delta** | `ΔkWh × tariff_rate` (watch fixed vs volumetric components) |
+```powershell
+git clone https://github.com/mehmetertac/energy-causal-conformal.git
+cd energy-causal-conformal
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+pytest tests/ -q
+python scripts/run_notebooks.py
+```
 
-Notebook 1 uses **simulated** peak-load reduction = **−15%** on treated evening peak hours. Synthetic control recovers the injected effect (bootstrap interval excludes zero); naive before/after is confounded by the shared weather jump. Placebos on untreated homes and fake dates put the real gap in the tail.
+- **Tests:** 33 unit tests on synthetic data (no network).
+- **Notebooks:** `scripts/run_notebooks.py` executes notebooks 01–03 top-to-bottom and writes summary PNGs to `results/`.
+- **GP appendix:** Notebook 3 needs `torch` + `gpytorch` (already in `requirements.txt`).
 
-**Honest uncertainty:** report intervals on the causal estimate (SC gap bootstrap + DiD CI) and on forecasts (conformal **empirical coverage** — nominal 90% is not enough on its own). A real tariff has no injected ground truth — see Notebook 1's "what would break" section.
+Optional DiD warmup: [`notebooks/00_did_toy_warmup.ipynb`](notebooks/00_did_toy_warmup.ipynb)
 
-**Forecast intervals in market terms:** a band labeled **80%** that delivers **~65%** empirical coverage is unpriced shortage risk — reserve sized from the label is too small, and imbalance exposure on the uncovered tail is real. CQR pays in **width** (more MW held around P50) and buys a label a reserve-planning or trading desk can contract against. Monitor **coverage over time** the way you monitor placebo p-values before scaling a tariff.
+---
+
+## What this means in market terms
+
+**Causal ATT** on load translates to peak MW avoided, wholesale energy savings, and customer bill deltas — but only if the estimate survives placebos and a CI that excludes zero.
+
+**Forecast bands** labeled 80% that deliver ~58% empirical coverage are unpriced shortage risk. Monitor **coverage over time** the way you monitor placebo p-values before scaling a tariff.
 
 ---
 
@@ -48,65 +98,31 @@ Notebook 1 uses **simulated** peak-load reduction = **−15%** on treated evenin
 | Source | Role |
 |---|---|
 | [Pecan Street Dataport](https://www.pecanstreet.org/dataport/) | **Intended** for Notebook 1 (registration required) |
-| [Low Carbon London](https://data.london.gov.uk/dataset/smartmeter-energy-use-data-in-london-households/) | **Day 1 substitute** — dToU tariff trial vs flat-rate control, 2013 |
+| [Low Carbon London](https://data.london.gov.uk/dataset/smartmeter-energy-use-data-in-london-households/) | **Substitute** — dToU tariff trial vs flat-rate control, 2013 |
+| Synthetic panels | Notebook 1 SC + Notebook 2 wind (reproducible, no download) |
 
 Details: [`data/README.md`](data/README.md)
-
----
-
-## Quick start
-
-Requires **Python 3.11+** recommended.
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-pre-commit install
-
-pytest tests/ -q
-jupyter notebook notebooks/00_did_toy_warmup.ipynb
-jupyter notebook notebooks/01_synthetic_control.ipynb
-jupyter notebook notebooks/02_conformal_forecast.ipynb
-jupyter notebook notebooks/03_gp_solar.ipynb
-```
-
-Optional LCL sample download (gitignored under `data/raw/lcl/`):
-
-```powershell
-python -c "from src.data.london_smartmeter import download_lcl_sample, download_lcl_tariffs; download_lcl_sample(); download_lcl_tariffs()"
-```
 
 ---
 
 ## Project structure
 
 ```
-├── docs/causal_mental_model.md     Causal concepts → energy examples
-├── docs/conformal_mental_model.md  Split conformal, CQR, exchangeability
-├── notebooks/                      00–03 notebooks
-├── results/                        Summary figures (gitignored; generated on notebook run)
-├── src/causal/                     DiD, synthetic control, propensity IPW/DoWhy
-├── src/conformal/                  QuantileLGBM, MAPIE CQR, rolling backtest, gp_solar (not exported)
-├── src/plotting.py                 Shared notebook styling + figure export
-├── WEEK_08_REFLECTION.md           Week 8 reflection (built / fuzzy / decisions)
-├── src/data/                       LCL loader, Pecan Street stub
+├── docs/
+│   ├── causal_mental_model.md
+│   ├── conformal_mental_model.md
+│   ├── two_questions.md          Public narrative (paste-ready)
+│   └── figures/                  Committed summary charts for README
+├── notebooks/                    00 warmup, 01–02 capstones, 03 GP appendix
+├── results/                      Generated PNGs (gitignored; on notebook run)
+├── scripts/run_notebooks.py      Non-interactive smoke run for 01–03
+├── src/causal/                   DiD, synthetic control, propensity IPW/DoWhy
+├── src/conformal/                QuantileLGBM, MAPIE CQR, rolling backtest
+├── src/plotting.py               Shared styling + figure export
 ├── tests/                        Unit tests (no network)
-├── data/README.md                Data acquisition
 ├── AGENT.md                      Agent workflow rules
 └── handover.md                   Live status for the next session
 ```
-
----
-
-## Tools (week roadmap)
-
-| Library | Use |
-|---|---|
-| DoWhy / EconML | Causal graphs, propensity, heterogeneous effects |
-| MAPIE | Conformal prediction intervals |
-| LightGBM | Quantile forecaster (Week 3 port in Notebook 2) |
-| GPyTorch | Brief GP solar example (compressed; conformal wins in production) |
 
 ---
 

@@ -1,13 +1,14 @@
-# Handover — energy-causal-conformal (Day 6)
+# Handover — energy-causal-conformal (v0.1.0)
 
 **Repo:** https://github.com/mehmetertac/energy-causal-conformal  
-**Last updated:** 2026-09-12  
-**Branch:** `main`
+**Last updated:** 2026-09-13  
+**Branch:** `main`  
+**Release:** `v0.1.0` — two questions, tagged ship
 
 ### Key commit
 
 ```
-e3b57d2 Day 6: brief GP solar appendix, tighten Notebook 2, shared results export
+(pending) v0.1.0: public README, hero figures, clean notebooks, tagged release
 ```
 
 ---
@@ -48,6 +49,12 @@ Agent workflow rules: [AGENT.md](AGENT.md)
 | LCL loader + Pecan Street stub | Done |
 | Unit tests (causal + conformal + gp_solar + data) | Done |
 | Pre-commit hooks (file size + pytest) | Done |
+| Public README — "Two questions your forecast can't answer" | Done |
+| Paste-ready post ([docs/two_questions.md](docs/two_questions.md)) | Done |
+| Committed hero figures ([docs/figures/](docs/figures/)) | Done |
+| Clean notebooks (outputs stripped) | Done |
+| Non-interactive smoke run ([scripts/run_notebooks.py](scripts/run_notebooks.py)) | Done |
+| **v0.1.0 tagged release** | Done |
 
 ---
 
@@ -77,8 +84,11 @@ energy-causal-conformal/
 ├── pytest.ini
 ├── .pre-commit-config.yaml
 ├── scripts/check_file_size.py
+├── scripts/run_notebooks.py
 ├── docs/causal_mental_model.md
 ├── docs/conformal_mental_model.md
+├── docs/two_questions.md
+├── docs/figures/              # committed README hero charts
 ├── data/README.md
 ├── notebooks/00_did_toy_warmup.ipynb
 ├── notebooks/01_synthetic_control.ipynb
@@ -111,13 +121,10 @@ pip install -r requirements.txt
 pre-commit install
 
 pytest tests/ -q
-jupyter notebook notebooks/00_did_toy_warmup.ipynb
-jupyter notebook notebooks/01_synthetic_control.ipynb
-jupyter notebook notebooks/02_conformal_forecast.ipynb
-jupyter notebook notebooks/03_gp_solar.ipynb
+python scripts/run_notebooks.py
 ```
 
-Summary figures (on notebook run): `results/nb01_treated_vs_synthetic.png`, `results/nb02_coverage_over_time.png`, `results/nb03_gp_solar_bands.png`.
+Summary figures (on notebook run): `results/nb01_treated_vs_synthetic.png`, `results/nb02_coverage_over_time.png`, `results/nb03_gp_solar_bands.png`. Committed copies for README: `docs/figures/`.
 
 ---
 

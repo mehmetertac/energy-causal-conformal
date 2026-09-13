@@ -8,7 +8,8 @@ Guidance for agents working in **energy-causal-conformal**. Read this file first
 
 | Doc | Purpose |
 |---|---|
-| [README.md](README.md) | Project goal, setup, two-notebook framing, tariff narrative |
+| [README.md](README.md) | Public artifact: two questions, two notebooks, reproduce-from-clone |
+| [docs/two_questions.md](docs/two_questions.md) | Paste-ready LinkedIn/blog narrative |
 | [handover.md](handover.md) | Current status, repo layout, module API, week roadmap |
 | [docs/causal_mental_model.md](docs/causal_mental_model.md) | Potential outcomes, DiD assumptions, synthetic control, energy examples |
 | [docs/conformal_mental_model.md](docs/conformal_mental_model.md) | Split conformal, CQR, exchangeability / blocked calibration |
