@@ -8,7 +8,7 @@
 ### Key commit
 
 ```
-(pending) v0.1.0: public README, hero figures, clean notebooks, tagged release
+47352d7 v0.1.0: public README, hero figures, clean notebooks, tagged release
 ```
 
 ---
