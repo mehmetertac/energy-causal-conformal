@@ -17,7 +17,9 @@ Utilities constantly ask causal questions (pilots, tariffs, curtailment counterf
 
 **Days 2–3:** synthetic control counterfactual, effect ± uncertainty, in-space and in-time placebos, DiD/propensity cross-checks, and a utility rollout read. See [`notebooks/01_synthetic_control.ipynb`](notebooks/01_synthetic_control.ipynb). Uses simulated Pecan-shaped data until Dataport is available. The notebook recovers a **known 15% peak-load cut**; naive before/after does not.
 
-**Day 4–5:** conformal mental model + MAPIE CQR on the Week 3 quantile LightGBM. See [`notebooks/02_conformal_forecast.ipynb`](notebooks/02_conformal_forecast.ipynb). Raw P10–P90 bands under-cover; CQR hits nominal by widening intervals. Long rolling backtest (~365 days) with coverage-over-time chart, month/regime breakdowns, and market-terms read. Reflection: [`WEEK_08_REFLECTION.md`](WEEK_08_REFLECTION.md).
+**Day 4–5:** conformal mental model + MAPIE CQR on the Week 3 quantile LightGBM. See [`notebooks/02_conformal_forecast.ipynb`](notebooks/02_conformal_forecast.ipynb). Five-beat narrative: method → CQR setup → coverage-over-time → width trade-off → market read. Summary figures export to `results/`. Reflection: [`WEEK_08_REFLECTION.md`](WEEK_08_REFLECTION.md).
+
+**Day 6 (appendix):** brief Bayesian GP on short-horizon solar — interview talking-point only. See [`notebooks/03_gp_solar.ipynb`](notebooks/03_gp_solar.ipynb). ExactGP with RBF + periodic kernel; ± 2σ credible bands vs why production uses CQR instead.
 
 Concept primers: [`docs/causal_mental_model.md`](docs/causal_mental_model.md) · [`docs/conformal_mental_model.md`](docs/conformal_mental_model.md)
 
@@ -66,6 +68,7 @@ pytest tests/ -q
 jupyter notebook notebooks/00_did_toy_warmup.ipynb
 jupyter notebook notebooks/01_synthetic_control.ipynb
 jupyter notebook notebooks/02_conformal_forecast.ipynb
+jupyter notebook notebooks/03_gp_solar.ipynb
 ```
 
 Optional LCL sample download (gitignored under `data/raw/lcl/`):
@@ -81,9 +84,11 @@ python -c "from src.data.london_smartmeter import download_lcl_sample, download_
 ```
 ├── docs/causal_mental_model.md     Causal concepts → energy examples
 ├── docs/conformal_mental_model.md  Split conformal, CQR, exchangeability
-├── notebooks/                      00–02 notebooks
+├── notebooks/                      00–03 notebooks
+├── results/                        Summary figures (gitignored; generated on notebook run)
 ├── src/causal/                     DiD, synthetic control, propensity IPW/DoWhy
-├── src/conformal/                  QuantileLGBM, MAPIE CQR, rolling backtest
+├── src/conformal/                  QuantileLGBM, MAPIE CQR, rolling backtest, gp_solar (not exported)
+├── src/plotting.py                 Shared notebook styling + figure export
 ├── WEEK_08_REFLECTION.md           Week 8 reflection (built / fuzzy / decisions)
 ├── src/data/                       LCL loader, Pecan Street stub
 ├── tests/                        Unit tests (no network)

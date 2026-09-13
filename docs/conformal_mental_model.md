@@ -73,6 +73,19 @@ This repo now has both a **single chronological split** (honest first numbers) a
 
 ---
 
+## Bayesian GP vs conformal (Notebook 3 appendix)
+
+| | ExactGP (GPyTorch, RBF + periodic) | CQR on quantile LightGBM |
+|---|---|---|
+| **Interval meaning** | Posterior **credible** band (± 2σ) | **Coverage**-calibrated prediction interval |
+| **Honesty depends on** | Kernel + noise model being right | Exchangeability + calibration set |
+| **Typical scale** | O(n³) — demo only (~100 points) | Production wind desk with thousands of rows |
+| **When to use in interviews** | Explain Bayesian UQ on short-horizon solar | Explain contract-grade forecast bands |
+
+GP bands answer “what does the model believe?” CQR answers “does the label match held-out frequency?” Production reserve desks need the second; GP is a compressed contrast in [`notebooks/03_gp_solar.ipynb`](../notebooks/03_gp_solar.ipynb).
+
+---
+
 ## What to report in production
 
 - **Empirical coverage** on a long held-out backtest — nominal 90% is not enough on its own.

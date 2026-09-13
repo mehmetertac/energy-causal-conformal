@@ -2,6 +2,7 @@ scipy>=1.12
 dowhy>=0.11
 econml>=0.15
 mapie>=1.0
+torch>=2.0
 gpytorch>=1.11
 lightgbm>=4.0
 pandas>=2.0
